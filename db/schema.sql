@@ -3,4 +3,3 @@ DROP DATABASE IF EXISTS timegoes_db;
 
 -- CREATE DATABASE
 CREATE DATABASE timegoes_db;
-
