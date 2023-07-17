@@ -67,48 +67,76 @@ router.post('/', (req, res) => {
 
 // update product
 router.put('/:id', (req, res) => {
-  // update product data
-  Product.update(req.body, {
-    where: {
-      id: req.params.id,
-    },
+  const { id } = req.params;
+  const { tagIds, ...productData } = req.body;
+
+  Product.update(productData, {
+    where: { id },
+    returning: true,
   })
-    .then((product) => {
-      if (req.body.tagIds && req.body.tagIds.length) {
-
-        ProductTag.findAll({
-          where: { product_id: req.params.id }
-        }).then((productTags) => {
-          // create filtered list of new tag_ids
-          const productTagIds = productTags.map(({ tag_id }) => tag_id);
-          const newProductTags = req.body.tagIds
-            .filter((tag_id) => !productTagIds.includes(tag_id))
-            .map((tag_id) => {
-              return {
-                product_id: req.params.id,
-                tag_id,
-              };
-            });
-
-          // figure out which ones to remove
-          const productTagsToRemove = productTags
-            .filter(({ tag_id }) => !req.body.tagIds.includes(tag_id))
-            .map(({ id }) => id);
-          // run both actions
-          return Promise.all([
-            ProductTag.destroy({ where: { id: productTagsToRemove } }),
-            ProductTag.bulkCreate(newProductTags),
-          ]);
-        });
+    .then(([rowsAffected, [updatedProduct]]) => {
+      if (rowsAffected === 0) {
+        res.status(404).json({ message: 'Product not found' });
+        return;
       }
 
-      return res.json(product);
+      if (tagIds && tagIds.length) {
+        // Find existing product tags
+        ProductTag.findAll({
+          where: { product_id: id },
+        })
+          .then((productTags) => {
+            const existingTagIds = productTags.map((tag) => tag.tag_id);
+
+            // Find tag IDs to remove
+            const tagsToRemove = existingTagIds.filter(
+              (tagId) => !tagIds.includes(tagId)
+            );
+
+            // Find tag IDs to add
+            const tagsToAdd = tagIds.filter(
+              (tagId) => !existingTagIds.includes(tagId)
+            );
+
+            // Remove tags
+            ProductTag.destroy({
+              where: {
+                product_id: id,
+                tag_id: tagsToRemove,
+              },
+            }).then(() => {
+              // Add new tags
+              const newProductTags = tagsToAdd.map((tagId) => ({
+                product_id: id,
+                tag_id: tagId,
+              }));
+
+              ProductTag.bulkCreate(newProductTags).then(() => {
+                res.status(200).json({
+                  message: 'Product updated successfully',
+                  product: updatedProduct,
+                });
+              });
+            });
+          })
+          .catch((err) => {
+            console.log(err);
+            res.status(500).json(err);
+          });
+      } else {
+        res.status(200).json({
+          message: 'Product updated successfully',
+          product: updatedProduct,
+        });
+      }
     })
     .catch((err) => {
-      // console.log(err);
+      console.log(err);
       res.status(400).json(err);
     });
 });
+
+
 
 router.delete('/:id', async (req, res) => {
   try {
@@ -119,7 +147,7 @@ router.delete('/:id', async (req, res) => {
       res.status(404).json({ message: 'Product not found' });
       return;
     }
-    res.status(200).json(productData);
+    res.status(200).json({ message: 'Product Deleted'});
   } catch (err) {
     console.log(err);
     res.status(500).json(err);
