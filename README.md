@@ -38,7 +38,7 @@ This is the back-end for an e-commerce site. It provides an Express.js API integ
 
 ## Video Link
 
-[Link Text](https://drive.google.com/file/d/1AoQPq-lztsLQQXCYUXOai4k7MzPclTK2/view)
+[Video Demo](https://drive.google.com/file/d/1AoQPq-lztsLQQXCYUXOai4k7MzPclTK2/view)
 
 ## License
 
